@@ -13,6 +13,7 @@ app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/problems', require('./routes/problemRoutes'));
 app.use('/api/submissions', require('./routes/submissionRoutes'));
 app.use('/api/gemini', require('./routes/geminiRoutes'));
+app.use('/api/users', require('./routes/userRoutes'));
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

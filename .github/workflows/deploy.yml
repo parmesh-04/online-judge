@@ -17,7 +17,18 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Check EC2 secrets are configured
+        id: check_secrets
+        run: |
+          if [ -z "${{ secrets.EC2_HOST }}" ] || [ -z "${{ secrets.EC2_SSH_KEY }}" ]; then
+            echo "⚠️  EC2_HOST or EC2_SSH_KEY secret not configured — skipping deployment"
+            echo "skip=true" >> $GITHUB_OUTPUT
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Setup SSH
+        if: steps.check_secrets.outputs.skip == 'false'
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/deploy_key
@@ -25,6 +36,7 @@ jobs:
           ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || true
 
       - name: Deploy to EC2
+        if: steps.check_secrets.outputs.skip == 'false'
         run: |
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_HOST }} << 'DEPLOY_SCRIPT'
             cd ~/online-judge
@@ -36,6 +48,7 @@ jobs:
           DEPLOY_SCRIPT
 
       - name: Verify deployment
+        if: steps.check_secrets.outputs.skip == 'false'
         run: |
           echo "Waiting 30 seconds for services to start..."
           sleep 30

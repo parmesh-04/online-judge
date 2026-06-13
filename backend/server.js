@@ -19,7 +19,12 @@
 // Port: 5000 (configurable via PORT env var)
 // ═══════════════════════════════════════════════════════════════════════
 
-require('dotenv').config();
+// Load .env file ONLY in development.
+// In production (Docker) and CI (test), env vars are injected directly by the
+// container runtime / GitHub Actions — we must NOT override them with a local .env file.
+if (process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== 'test') {
+  require('dotenv').config();
+}
 
 // ── Validate required environment variables on startup ──
 // If any are missing, log clearly and exit — never start with broken config.

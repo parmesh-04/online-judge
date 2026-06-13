@@ -1,6 +1,6 @@
 # Purpose: Development overrides for docker-compose.
 # Adds volume mounts for hot-reload and uses dev commands.
-# Usage: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+# Usage: docker compose -f docker-compose.yml -f docker-compose.dev.yml up
 
 services:
   frontend:

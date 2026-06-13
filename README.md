@@ -25,7 +25,7 @@
 - 📊 **Real-time Leaderboard** — Track your rank against other competitive programmers
 - ⚡ **Monaco Editor** — VS Code's editor in the browser with syntax highlighting and IntelliSense
 - 🚀 **CI/CD with GitHub Actions** — Automated linting, testing, Docker builds, and EC2 deployment
-- 🐳 **Fully Containerized** — One-command deployment with Docker Compose
+- 🐳 **Fully Containerized** — One-command deployment with Docker Compose V2
 - 🛡️ **Production-Hardened** — Helmet, rate limiting, CORS, JWT auth, and global error handling
 
 ---
@@ -104,7 +104,7 @@ cp frontend/.env.example frontend/.env
 # 4. Fill in your secrets in backend/.env (GEMINI_API_KEY, etc.)
 
 # 5. Start everything with Docker Compose
-docker-compose up -d --build
+docker compose up -d --build
 ```
 
 The app will be available at:

@@ -2,7 +2,7 @@
 
 // seed.js — Database seeding script for Online Judge
 // Run with: node scripts/seed.js
-// Run inside Docker with: docker-compose exec backend node scripts/seed.js
+// Run inside Docker with: docker compose exec backend node scripts/seed.js
 // WARNING: This will NOT delete existing data. It checks for duplicates.
 // To reset completely: pass --reset flag: node scripts/seed.js --reset
 

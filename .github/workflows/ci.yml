@@ -70,7 +70,7 @@ jobs:
 
       - name: Smoke test backend
         env:
-          MONGO_URI: mongodb://localhost:27017/online-judge-test
+          MONGO_URI: mongodb://127.0.0.1:27017/online-judge-test
           JWT_SECRET: ci-test-jwt-secret-key-32chars-min
           GEMINI_API_KEY: test-gemini-api-key-placeholder
           JUDGE_SERVICE_KEY: ci-internal-judge-service-key

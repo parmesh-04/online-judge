@@ -72,12 +72,10 @@ const userSchema = new mongoose.Schema({
 }, { timestamps: true }); // Adds createdAt and updatedAt fields automatically
 
 // ── Indexes ──
-// { email: 1 }: Speeds up User.findOne({ email }) during login.
-//   This duplicates the unique index, but is explicit for clarity.
-userSchema.index({ email: 1 });
-
 // { solvedProblems: 1 }: Speeds up leaderboard queries that
 //   sort or filter by number of solved problems.
+// Note: The email index is already created automatically by unique:true above.
 userSchema.index({ solvedProblems: 1 });
+
 
 module.exports = mongoose.model('User', userSchema);

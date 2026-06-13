@@ -12,10 +12,10 @@
 //   - The browser automatically sends the cookie with every request
 //   - No need for the frontend to manage tokens manually
 //
-// JWT expiry: 7 days (configured in utils/jwt.js)
-//   - Long enough for a good UX (users don't re-login constantly)
-//   - Short enough that stolen tokens expire relatively quickly
-//   - For higher security, reduce to 1 hour + add refresh tokens
+// JWT expiry: 24 hours (configured in utils/jwt.js)
+//   - Long enough for a normal session without constant re-logins
+//   - Short enough to limit damage from stolen tokens
+//   - For higher security: reduce to 1h + implement refresh tokens
 // ═══════════════════════════════════════════════════════════════════════
 
 const bcrypt = require('bcryptjs');

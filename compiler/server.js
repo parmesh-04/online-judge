@@ -17,7 +17,11 @@
 // Port: 8000 (configurable via PORT env var)
 // ═══════════════════════════════════════════════════════════════════════
 
-require('dotenv').config();
+// Load .env file only in development — in production (Docker) and CI (test),
+// environment variables are injected directly by the container runtime / GitHub Actions.
+if (process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== 'test') {
+  require('dotenv').config();
+}
 
 // ── Validate required environment variables on startup ──
 // MAIN_BACKEND_API_URL is required so the compiler can report verdicts

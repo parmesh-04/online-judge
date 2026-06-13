@@ -11,28 +11,32 @@ const createToken = (user) => {
   return jwt.sign(
     {
       id: user._id,
-      email: user.email, //this is the payload i want it to store
-      role: user.role
+      email: user.email,
+      role: user.role,
     },
-    process.env.JWT_SECRET || process.env.SECRET_KEY,           // secret used to sign the token
-    { expiresIn: '24h' }              // token validity period
+    process.env.JWT_SECRET,   // Must be set — validated at server startup
+    { expiresIn: '24h' }      // Token valid for 24 hours
   );
 };
-// we sign the jwt token using payload , secret key that is only stored in the server  
+
 /**
  * Helper to set the token inside an HttpOnly cookie
  * (same logic reused in register + login).
  */
 const setAuthCookie = (res, token) => {
   res.cookie('token', token, {
-    httpOnly: true, 
-    // not readable by JS so we dont get XSS attack 
-    // Cookies with httpOnly flag protect against XSS because JavaScript 
-    // cannot access them. LocalStorage is readable from any script running on the page.
-    secure: process.env.NODE_ENV === 'production',//tells if https connection is used or not
-    sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',//tells if the cookie can be sent to cross-site or not
-    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    // httpOnly: true — cookie is NOT readable by JavaScript.
+    // This is the primary XSS defense: even if an attacker injects a script,
+    // they cannot steal the token via document.cookie or fetch().
+    httpOnly: true,
+    // secure: true in production — cookie is only sent over HTTPS connections.
+    secure: process.env.NODE_ENV === 'production',
+    // sameSite: prevents CSRF attacks by blocking cross-site cookie sending.
+    // 'strict' in production, 'lax' in development (allows local testing).
+    sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+    maxAge: 24 * 60 * 60 * 1000, // 24 hours in milliseconds
   });
 };
+
 
 module.exports = { createToken, setAuthCookie };

@@ -15,7 +15,7 @@ const requireAuth = (options = {}) => {
     try {
       // 2️⃣ Verify the token using our SECRET_KEY
       // If token is tampered or expired → this will throw an error
-      const decoded = jwt.verify(token, process.env.JWT_SECRET || process.env.SECRET_KEY);
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
       // 3️⃣ Optional role-based authorization
       // If route requires admin but user is not admin → block

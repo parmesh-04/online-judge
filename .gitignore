@@ -46,3 +46,4 @@ project_documentation.md
 DEPLOYMENT.md
 CHECKLIST.md
 test_judge.js
+deploy.sh

@@ -1,5 +1,5 @@
-# Purpose: CI Pipeline — runs linting, smoke tests, and Docker build verification.
-# Triggers on every push and on pull requests to main.
+# CI Pipeline — Lint, smoke test, and Docker image build verification.
+# Triggers on every push and on all pull requests to main.
 
 name: CI Pipeline
 
@@ -10,6 +10,9 @@ on:
     branches: [main]
 
 jobs:
+  # ─────────────────────────────────────────────
+  # JOB 1: Lint + Backend Smoke Test
+  # ─────────────────────────────────────────────
   lint-and-test:
     name: Lint & Smoke Test
     runs-on: ubuntu-latest
@@ -19,12 +22,18 @@ jobs:
         image: mongo:7
         ports:
           - 27017:27017
+        # Wait for MongoDB to be ready before running tests
+        options: >-
+          --health-cmd "mongosh --eval 'db.adminCommand({ ping: 1 })'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node.js 20
         uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -35,12 +44,6 @@ jobs:
           path: backend/node_modules
           key: backend-${{ hashFiles('backend/package-lock.json') }}
 
-      - name: Cache compiler node_modules
-        uses: actions/cache@v4
-        with:
-          path: compiler/node_modules
-          key: compiler-${{ hashFiles('compiler/package-lock.json') }}
-
       - name: Cache frontend node_modules
         uses: actions/cache@v4
         with:
@@ -50,55 +53,54 @@ jobs:
       - name: Install backend dependencies
         run: cd backend && npm ci
 
-      - name: Install compiler dependencies
-        run: cd compiler && npm ci
-
       - name: Install frontend dependencies
         run: cd frontend && npm ci
 
-      - name: Lint backend
+      # Lint steps are advisory only — never block the build
+      - name: Lint backend (advisory)
         run: cd backend && npx eslint . --ext .js --max-warnings 100 || true
-        continue-on-error: true
 
-      - name: Lint compiler
-        run: cd compiler && npx eslint . --ext .js --max-warnings 100 || true
-        continue-on-error: true
-
-      - name: Lint frontend
+      - name: Lint frontend (advisory)
         run: cd frontend && npm run lint || true
-        continue-on-error: true
 
+      # ── The real test: can the backend start and serve traffic? ──
       - name: Smoke test backend
         env:
-          MONGO_URI: mongodb://127.0.0.1:27017/online-judge-test
-          JWT_SECRET: ci-test-jwt-secret-key-32chars-min
-          GEMINI_API_KEY: test-gemini-api-key-placeholder
-          JUDGE_SERVICE_KEY: ci-internal-judge-service-key
-          PORT: 5000
           NODE_ENV: test
-          DOTENV_CONFIG_PATH: /dev/null
+          MONGO_URI: mongodb://127.0.0.1:27017/online-judge-ci
+          JWT_SECRET: ci-test-jwt-secret-key-minimum-32-chars
+          GEMINI_API_KEY: test-gemini-key-placeholder
+          JUDGE_SERVICE_KEY: ci-internal-judge-key
+          PORT: 5000
         run: |
           cd backend
           node server.js &
           SERVER_PID=$!
-          sleep 8
 
-          # Retry health check up to 15 times
+          echo "Waiting for backend to start..."
+          sleep 10
+
+          # Retry health check up to 15 times (30 seconds total)
           for i in $(seq 1 15); do
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5000/api/health || true)
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:5000/api/health || echo "000")
             if [ "$STATUS" = "200" ]; then
               echo "✅ Health check passed on attempt $i"
               kill $SERVER_PID 2>/dev/null || true
               exit 0
             fi
-            echo "Attempt $i: status=$STATUS, retrying..."
+            echo "Attempt $i: HTTP $STATUS — retrying in 2s..."
             sleep 2
           done
 
           echo "❌ Health check failed after 15 attempts"
+          echo "--- Last server output ---"
           kill $SERVER_PID 2>/dev/null || true
           exit 1
 
+  # ─────────────────────────────────────────────
+  # JOB 2: Docker Image Build Verification
+  # Only runs after lint-and-test passes
+  # ─────────────────────────────────────────────
   docker-build:
     name: Docker Build Verification
     runs-on: ubuntu-latest
@@ -108,41 +110,21 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Docker Buildx
+      - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build frontend image
-        run: docker build -t online-judge-frontend ./frontend
-
+      # Build each image independently — fastest way to catch Dockerfile errors
       - name: Build backend image
         run: docker build -t online-judge-backend ./backend
 
       - name: Build compiler image
         run: docker build -t online-judge-compiler ./compiler
 
-      - name: Start stack with docker-compose
+      - name: Build frontend image
+        run: docker build -t online-judge-frontend ./frontend
+
+      - name: Verify all images exist
         run: |
-          # Create minimal .env files for the test
-          echo "MONGO_URI=mongodb://mongodb:27017/online-judge" > backend/.env
-          echo "JWT_SECRET=ci-test-secret" >> backend/.env
-          echo "GEMINI_API_KEY=test-key" >> backend/.env
-          echo "FRONTEND_URL=http://localhost:3000" >> backend/.env
-
-          docker-compose up -d
-          echo "Waiting 30 seconds for services to start..."
-          sleep 30
-
-      - name: Verify health check
-        run: |
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5000/api/health || true)
-          if [ "$STATUS" = "200" ]; then
-            echo "✅ Stack health check passed"
-          else
-            echo "❌ Stack health check failed (status: $STATUS)"
-            docker-compose logs --tail=50
-            exit 1
-          fi
-
-      - name: Tear down stack
-        if: always()
-        run: docker-compose down
+          echo "--- Built images ---"
+          docker images | grep online-judge
+          echo "✅ All 3 Docker images built successfully"

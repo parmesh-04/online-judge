@@ -1,5 +1,6 @@
-# Purpose: Deploy to Production — SSHs into EC2 and deploys via Docker Compose.
-# Only runs on push to main after CI passes.
+# Deploy to Production — SSHs into EC2 and redeploys via Docker Compose V2.
+# Only triggers on push to main.
+# Skips gracefully if EC2_HOST / EC2_SSH_KEY secrets are not yet configured.
 
 name: Deploy to Production
 
@@ -11,56 +12,60 @@ jobs:
   deploy:
     name: Deploy to EC2
     runs-on: ubuntu-latest
-    # Only deploy if CI workflow succeeded (implicitly — same branch trigger)
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # Skip the entire deploy if EC2 secrets haven't been set up yet.
+      # This prevents a red X on every push before the EC2 instance exists.
       - name: Check EC2 secrets are configured
         id: check_secrets
         run: |
           if [ -z "${{ secrets.EC2_HOST }}" ] || [ -z "${{ secrets.EC2_SSH_KEY }}" ]; then
-            echo "⚠️  EC2_HOST or EC2_SSH_KEY secret not configured — skipping deployment"
+            echo "⚠️  EC2_HOST or EC2_SSH_KEY not configured — skipping deployment"
             echo "skip=true" >> $GITHUB_OUTPUT
           else
             echo "skip=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Setup SSH
+      - name: Setup SSH key
         if: steps.check_secrets.outputs.skip == 'false'
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || true
+          ssh-keyscan -H "${{ secrets.EC2_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null || true
 
       - name: Deploy to EC2
         if: steps.check_secrets.outputs.skip == 'false'
         run: |
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_HOST }} << 'DEPLOY_SCRIPT'
-            cd ~/online-judge
-            git pull origin main
-            docker-compose pull
-            docker-compose up -d --build --remove-orphans
-            docker system prune -f
-            echo "✅ Deployment complete"
-          DEPLOY_SCRIPT
+          ssh -i ~/.ssh/deploy_key \
+            -o StrictHostKeyChecking=no \
+            ubuntu@${{ secrets.EC2_HOST }} << 'ENDSSH'
+              cd ~/online-judge
+              git pull origin main
+              docker compose pull
+              docker compose up -d --build --remove-orphans
+              docker system prune -f
+              echo "✅ Deployment complete"
+          ENDSSH
 
-      - name: Verify deployment
+      - name: Verify deployment health
         if: steps.check_secrets.outputs.skip == 'false'
         run: |
-          echo "Waiting 30 seconds for services to start..."
-          sleep 30
-          
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://${{ secrets.EC2_HOST }}/api/health || true)
+          echo "Waiting 40 seconds for containers to start..."
+          sleep 40
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            http://${{ secrets.EC2_HOST }}/api/health || echo "000")
           if [ "$STATUS" = "200" ]; then
             echo "✅ Deployment verified — health check passed"
           else
-            echo "❌ Deployment verification failed (status: $STATUS)"
-            echo "Fetching logs..."
-            ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_HOST }} \
-              "cd ~/online-judge && docker-compose logs --tail=50"
+            echo "❌ Health check failed (HTTP $STATUS) — fetching logs"
+            ssh -i ~/.ssh/deploy_key \
+              -o StrictHostKeyChecking=no \
+              ubuntu@${{ secrets.EC2_HOST }} \
+              "cd ~/online-judge && docker compose logs --tail=60"
             exit 1
           fi
 

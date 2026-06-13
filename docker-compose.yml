@@ -1,0 +1,54 @@
+# Purpose: Production Docker Compose configuration for the Online Judge.
+# Orchestrates all four services: frontend, backend, compiler, and MongoDB.
+
+services:
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+
+  backend:
+    build: ./backend
+    ports:
+      - "5000:5000"
+    env_file:
+      - ./backend/.env
+    environment:
+      - NODE_ENV=production
+      - MONGO_URI=mongodb://mongodb:27017/online-judge
+      - COMPILER_SERVICE_URL=http://compiler:8000
+      - FRONTEND_URL=http://localhost:3000
+    depends_on:
+      - mongodb
+    restart: unless-stopped
+
+  compiler:
+    build: ./compiler
+    ports:
+      - "8000:8000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /tmp:/tmp
+    environment:
+      - MAIN_BACKEND_API_URL=http://backend:5000
+      - CLIENT_ORIGIN=http://localhost:3000
+      - NODE_ENV=production
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  mongodb:
+    image: mongo:7
+    volumes:
+      - mongo_data:/data/db
+    ports:
+      - "27017:27017"
+    restart: unless-stopped
+
+volumes:
+  mongo_data:

@@ -1,80 +1,106 @@
+// Purpose: User controller — stats, public profile, and leaderboard.
+// Provides endpoints for user statistics and global rankings.
 
 const User = require('../models/user');
 const Problem = require('../models/problem');
 const Submission = require('../models/submission');
-const { ObjectId } = require('mongoose').Types;
 
 // -------------------------------------------------------
 // GET USER STATS (simple version — no heavy aggregations)
 // -------------------------------------------------------
-exports.getUserStats = async (req, res) => {
+exports.getUserStats = async (req, res, next) => {
   try {
     // 1) Get user basic info
     const user = await User.findById(req.user.id)
-      .select('firstname lastname email solvedProblems');
+      .select('firstname lastname email solvedProblems role createdAt');
 
     if (!user) return res.status(404).json({ message: 'User not found' });
 
     // 2) Get solved problem details with projection (optimized)
     let solvedProblemsDetails = [];
     if (user.solvedProblems && user.solvedProblems.length > 0) {
-      solvedProblemsDetails = await Problem.find({ 
-        _id: { $in: user.solvedProblems } 
+      solvedProblemsDetails = await Problem.find({
+        _id: { $in: user.solvedProblems },
       })
-      .select('title difficulty')  // Only needed fields
-      .sort({ title: 1 });        // Sort by title
+        .select('title difficulty')
+        .sort({ title: 1 });
     }
 
-    // 3) Compute simple stats
+    // 3) Get total submissions count
+    const totalSubmissions = await Submission.countDocuments({ userId: req.user.id });
+
+    // 4) Get recent submissions
+    const recentSubmissions = await Submission.find({ userId: req.user.id })
+      .sort({ createdAt: -1 })
+      .limit(10)
+      .populate('problemId', 'title')
+      .select('problemId verdict language createdAt');
+
+    // 5) Get submission dates for heatmap (last 84 days)
+    const heatmapStart = new Date();
+    heatmapStart.setDate(heatmapStart.getDate() - 84);
+    const submissionDates = await Submission.aggregate([
+      { $match: { userId: user._id, createdAt: { $gte: heatmapStart } } },
+      { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } }, count: { $sum: 1 } } },
+    ]);
+
+    // 6) Compute simple stats
     const totalSolved = user.solvedProblems ? user.solvedProblems.length : 0;
+    const successRate = totalSubmissions > 0
+      ? Math.round((totalSolved / totalSubmissions) * 100)
+      : 0;
 
     res.json({
       firstname: user.firstname,
       lastname: user.lastname,
       email: user.email,
+      role: user.role,
+      createdAt: user.createdAt,
       totalSolved,
-      solvedProblems: solvedProblemsDetails  // Frontend can show green tick + title
+      totalSubmissions,
+      successRate,
+      solvedProblems: solvedProblemsDetails,
+      recentSubmissions,
+      submissionHeatmap: submissionDates,
     });
   } catch (err) {
-    console.error('getUserStats error:', err);
-    res.status(500).json({ message: 'Server error', error: err.message });
+    next(err);
   }
 };
 
 // -------------------------------------------------------
 // PUBLIC PROFILE (same logic, but hides sensitive fields)
 // -------------------------------------------------------
-exports.getPublicProfile = async (req, res) => {
+exports.getPublicProfile = async (req, res, next) => {
   try {
-    // 1) Get user basic info
     const user = await User.findById(req.params.userId)
       .select('firstname lastname solvedProblems');
 
     if (!user) return res.status(404).json({ message: 'User not found' });
 
-    // 2) Compute simple stats
     const solvedCount = user.solvedProblems.length;
 
     res.json({
       firstname: user.firstname,
       lastname: user.lastname,
-      solvedCount
+      solvedCount,
     });
   } catch (err) {
-    res.status(500).json({ message: 'Server error' });
+    next(err);
   }
 };
 
 // -------------------------------------------------------
 // LEADERBOARD (simple sorting by solved count)
 // -------------------------------------------------------
-exports.getLeaderboard = async (req, res) => {
+exports.getLeaderboard = async (req, res, next) => {
   try {
     const leaderboard = await User.aggregate([
       {
         $project: {
-          _id: 0,
+          _id: 1,
           username: { $concat: ['$firstname', ' ', '$lastname'] },
+          firstname: 1,
           problemsSolved: { $size: { $ifNull: ['$solvedProblems', []] } },
         },
       },
@@ -83,6 +109,6 @@ exports.getLeaderboard = async (req, res) => {
 
     return res.json(leaderboard);
   } catch (err) {
-    return res.status(500).json({ message: 'Server error', error: err.message });
+    next(err);
   }
 };

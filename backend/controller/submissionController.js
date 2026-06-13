@@ -1,8 +1,10 @@
+// Purpose: Submission controller — records verdicts from the compiler service.
+// When the compiler finishes judging, it POSTs the verdict here.
+
 const Submission = require('../models/submission');
 const User = require('../models/user');
-const Problem = require('../models/problem');
 
-exports.reportVerdict = async (req, res) => {
+exports.reportVerdict = async (req, res, next) => {
   try {
     const { problemId, verdict, code, language } = req.body;
 
@@ -28,6 +30,6 @@ exports.reportVerdict = async (req, res) => {
 
     return res.status(201).json({ message: 'Verdict saved', submissionId: submission._id });
   } catch (error) {
-    return res.status(500).json({ message: 'Server error', error: error.message });
+    next(error);
   }
 };

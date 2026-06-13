@@ -1,3 +1,22 @@
+// ═══════════════════════════════════════════════════════════════════════
+// backend/controller/problemController.js — Problem CRUD controller
+// ═══════════════════════════════════════════════════════════════════════
+//
+// Handles listing, fetching, creating, and deleting problems.
+// Uses MongoDB aggregation for efficient pagination.
+//
+// SECURITY MODEL FOR HIDDEN TEST CASES:
+//   Problems have a `hiddenTestCases` array that contains the actual test
+//   cases used for judging. These must NEVER be exposed to end users.
+//
+//   - getAllProblems(): Uses $project aggregation to exclude hiddenTestCases
+//   - getProblem(): Uses .select('-hiddenTestCases') for public requests
+//   - getProblem() + X-Judge-Service-Key: Returns full doc for the compiler
+//
+//   The compiler service authenticates via the JUDGE_SERVICE_KEY env var,
+//   sent as the X-Judge-Service-Key header. This is checked against the
+//   backend's JUDGE_SERVICE_KEY. If they match, the full problem is returned.
+// ═══════════════════════════════════════════════════════════════════════
 const Problem = require('../models/problem');
 const User = require('../models/user');
 
@@ -14,7 +33,7 @@ const normalizeTags = (tags) => {
 };
 
 // Fetch all problems with pagination (hidden testcases excluded)
-exports.getAllProblems = async (req, res) => {
+exports.getAllProblems = async (req, res, next) => {
   try {
     // Build optional filter
     const filter = {};
@@ -34,28 +53,19 @@ exports.getAllProblems = async (req, res) => {
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
-    console.log(`Pagination: page=${page}, limit=${limit}, skip=${skip}`);
-
     // Use aggregation pipeline with pagination
     const problems = await Problem.aggregate([
-      // Stage 1: Filter problems based on query parameters
       { $match: filter },
-      
-      // Stage 2: Include only needed fields (inclusion-only projection)
-      { $project: { 
+      { $project: {
         title: 1,
         description: 1,
         difficulty: 1,
         tags: 1,
-        createdAt: 1
+        createdAt: 1,
       }},
-      
-      // Stage 3: Sort by creation time
       { $sort: { createdAt: 1 } },
-      
-      // Stage 4: Pagination - skip and limit
       { $skip: skip },
-      { $limit: limit }
+      { $limit: limit },
     ]);
 
     // Get total count for pagination metadata
@@ -68,32 +78,41 @@ exports.getAllProblems = async (req, res) => {
       totalProblems: totalCount,
       hasNext: page * limit < totalCount,
       hasPrev: page > 1,
-      pageSize: limit
+      pageSize: limit,
     };
 
     res.json({
       problems,
-      pagination
+      pagination,
     });
   } catch (error) {
-    console.error('getAllProblems error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    next(error);
   }
 };
 
 // Fetch a single problem by its MongoDB _id
-exports.getProblem = async (req, res) => {
+// - Public requests: hiddenTestCases stripped (security)
+// - Internal compiler requests with X-Judge-Service-Key: full problem returned
+exports.getProblem = async (req, res, next) => {
   try {
-    const problem = await Problem.findById(req.params.id);
+    const serviceKey = req.headers['x-judge-service-key'];
+    const isInternalService = serviceKey && serviceKey === process.env.JUDGE_SERVICE_KEY;
+
+    const query = isInternalService
+      ? Problem.findById(req.params.id)                         // full doc for judging
+      : Problem.findById(req.params.id).select('-hiddenTestCases'); // stripped for public
+
+    const problem = await query;
     if (!problem) return res.status(404).json({ message: 'Problem not found' });
     res.json(problem);
   } catch (error) {
-    res.status(500).json({ message: 'Server error' });
+    next(error);
   }
 };
 
+
 // Create a new problem
-exports.createProblem = async (req, res) => {
+exports.createProblem = async (req, res, next) => {
   try {
     const { title, description, difficulty, tags, hiddenTestCases } = req.body;
 
@@ -108,21 +127,21 @@ exports.createProblem = async (req, res) => {
       description,
       difficulty,
       tags: normalizeTags(tags),
-      hiddenTestCases: hiddenTestCases || []
+      hiddenTestCases: hiddenTestCases || [],
     });
 
     res.status(201).json(problem);
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    next(error);
   }
 };
 
 // Delete a problem and remove references from users
-exports.deleteProblem = async (req, res) => {
+exports.deleteProblem = async (req, res, next) => {
   try {
     const deleted = await Problem.findByIdAndDelete(req.params.id);
     if (!deleted) return res.status(404).json({ message: 'Problem not found' });
-    
+
     // Remove deleted problem from all users' solved lists
     await User.updateMany(
       { solvedProblems: deleted._id },
@@ -131,6 +150,6 @@ exports.deleteProblem = async (req, res) => {
 
     res.json({ message: 'Problem deleted' });
   } catch (error) {
-    res.status(500).json({ message: 'Server error' });
+    next(error);
   }
 };

@@ -1,0 +1,56 @@
+# Purpose: Deploy to Production — SSHs into EC2 and deploys via Docker Compose.
+# Only runs on push to main after CI passes.
+
+name: Deploy to Production
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    name: Deploy to EC2
+    runs-on: ubuntu-latest
+    # Only deploy if CI workflow succeeded (implicitly — same branch trigger)
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || true
+
+      - name: Deploy to EC2
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_HOST }} << 'DEPLOY_SCRIPT'
+            cd ~/online-judge
+            git pull origin main
+            docker-compose pull
+            docker-compose up -d --build --remove-orphans
+            docker system prune -f
+            echo "✅ Deployment complete"
+          DEPLOY_SCRIPT
+
+      - name: Verify deployment
+        run: |
+          echo "Waiting 30 seconds for services to start..."
+          sleep 30
+          
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://${{ secrets.EC2_HOST }}/api/health || true)
+          if [ "$STATUS" = "200" ]; then
+            echo "✅ Deployment verified — health check passed"
+          else
+            echo "❌ Deployment verification failed (status: $STATUS)"
+            echo "Fetching logs..."
+            ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_HOST }} \
+              "cd ~/online-judge && docker-compose logs --tail=50"
+            exit 1
+          fi
+
+      - name: Cleanup SSH key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key

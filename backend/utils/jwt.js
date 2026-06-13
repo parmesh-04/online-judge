@@ -14,7 +14,7 @@ const createToken = (user) => {
       email: user.email, //this is the payload i want it to store
       role: user.role
     },
-    process.env.SECRET_KEY,           // secret used to sign the token
+    process.env.JWT_SECRET || process.env.SECRET_KEY,           // secret used to sign the token
     { expiresIn: '24h' }              // token validity period
   );
 };

@@ -3,7 +3,7 @@ const mongoose = require('mongoose')
 let connectionPromise = null;
 
 const DBConnection = async() =>{
-const MONGO_URI = process.env.MONGODB_URL || process.env.MONGODB_URI;
+const MONGO_URI = process.env.MONGO_URI || process.env.MONGODB_URL || process.env.MONGODB_URI;
 
 try{
 if (connectionPromise) return connectionPromise;

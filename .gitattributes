@@ -1,0 +1,26 @@
+# .gitattributes — Ensure consistent line endings across Windows/Mac/Linux
+# This prevents the CRLF/LF mismatch warnings on Windows Git
+
+# Default: normalize all text files to LF on checkout
+* text=auto eol=lf
+
+# Shell scripts MUST have LF (bash fails with CRLF)
+*.sh text eol=lf
+
+# Windows batch files need CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Binary files — don't touch line endings
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.svg binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary
+*.zip binary
+*.gz binary

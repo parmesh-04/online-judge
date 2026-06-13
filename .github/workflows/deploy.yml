@@ -48,7 +48,7 @@ jobs:
               docker compose pull
               docker compose up -d --build --remove-orphans
               docker system prune -f
-              echo "✅ Deployment complete"
+              echo "Deployment complete"
           ENDSSH
 
       - name: Verify deployment health
@@ -59,9 +59,9 @@ jobs:
           STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
             http://${{ secrets.EC2_HOST }}/api/health || echo "000")
           if [ "$STATUS" = "200" ]; then
-            echo "✅ Deployment verified — health check passed"
+            echo "Deployment verified"
           else
-            echo "❌ Health check failed (HTTP $STATUS) — fetching logs"
+            echo "Health check failed (HTTP $STATUS) — fetching logs"
             ssh -i ~/.ssh/deploy_key \
               -o StrictHostKeyChecking=no \
               ubuntu@${{ secrets.EC2_HOST }} \

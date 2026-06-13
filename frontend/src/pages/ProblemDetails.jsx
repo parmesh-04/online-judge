@@ -22,26 +22,10 @@
 //
 //   - "Submit" (blue button): Executes code against ALL HIDDEN TEST CASES
 //     via POST /compiler/submit. Returns a verdict (Accepted, Wrong Answer,
-//     Compile Error, TLE, Runtime Error). The verdict is also saved to the
-//     database as a Submission record.
-//
-// AI FEATURES (right panel toolbar):
-//   - "AI Debug" button: Sends code + error to Gemini via SSE streaming.
-//     Response is consumed using ReadableStream.getReader() and rendered
-//     in real-time in the AIDebugPanel slide-out drawer.
-//
-//   - "Hint" button: Gets progressive hints (conceptual → algorithmic → detailed)
-//     based on how many times the user has attempted the problem.
-//
-// SSE STREAM CONSUMPTION:
-//   The debug endpoint returns text/event-stream. We consume it by:
-//   1. Getting a ReadableStream reader from fetch() response.body
-//   2. Reading chunks in a while loop with reader.read()
-//   3. Decoding each chunk with TextDecoder
-//   4. Parsing "data: {JSON}\n\n" lines
-//   5. Appending text to state for real-time display
-//   6. On "done: true", extracting the parsed JSON for structured display
-// ═══════════════════════════════════════════════════════════════════════
+// frontend/src/pages/ProblemDetails.jsx
+// Problem detail page with Monaco editor, code runner, and AI debug panel.
+// AI streaming uses the Fetch API with ReadableStream to parse SSE chunks.
+
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import Editor from '@monaco-editor/react';

@@ -1,32 +1,3 @@
-// ═══════════════════════════════════════════════════════════════════════
-// compiler/controller/compilerController.js — Code execution controller
-// ═══════════════════════════════════════════════════════════════════════
-//
-// This is the MOST SECURITY-CRITICAL file in the entire project.
-// It handles executing untrusted user code inside Docker containers.
-//
-// ┌─────────────────────────────────────────────────────────────────┐
-// │                    EXECUTION FLOW DIAGRAM                       │
-// ├─────────────────────────────────────────────────────────────────┤
-// │                                                                 │
-// │  1. Receive code + language + input from HTTP request           │
-// │  2. Write code to temp file on HOST at /tmp/{uuid}.{ext}        │
-// │  3. Start Docker container with:                                │
-// │     - Temp file bind-mounted READ-ONLY into /sandbox/           │
-// │     - Network DISABLED (no internet access)                     │
-// │     - Memory limited to 256MB (prevents memory bombs)           │
-// │     - CPU limited to 50% of one core (prevents CPU hogging)     │
-// │     - PID limit 50 (prevents fork bombs)                        │
-// │     - Read-only filesystem (prevents file system attacks)        │
-// │  4. Execute code inside container with stdin piped from input   │
-// │  5. Capture stdout/stderr from container logs                   │
-// │  6. Kill container if execution exceeds 10 seconds              │
-// │  7. Manually remove container after capturing logs              │
-// │  8. Clean up host temp files                                    │
-// │  9. Return { stdout, stderr, exitCode, executionTimeMs }        │
-// │                                                                 │
-// └─────────────────────────────────────────────────────────────────┘
-//
 // Two endpoints:
 //   POST /compiler/run    — Run code against user-provided input (playground mode)
 //   POST /compiler/submit — Run code against hidden test cases and report verdict

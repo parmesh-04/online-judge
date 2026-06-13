@@ -1,11 +1,10 @@
-// Utility helpers related to JWT and auth cookies.
-// These are reused by both register + login (and anywhere else we need them)
+// backend/utils/jwt.js
+// JWT creation and cookie helpers — reused by register and login.
 
 const jwt = require('jsonwebtoken');
 
 /**
- * Create a signed JWT token containing basic user info.
- * We DO NOT store the password or sensitive fields inside the token.
+ * Creates a signed JWT containing basic user info (no password).
  */
 const createToken = (user) => {
   return jwt.sign(
@@ -14,29 +13,23 @@ const createToken = (user) => {
       email: user.email,
       role: user.role,
     },
-    process.env.JWT_SECRET,   // Must be set — validated at server startup
-    { expiresIn: '24h' }      // Token valid for 24 hours
+    process.env.JWT_SECRET,
+    { expiresIn: '24h' }
   );
 };
 
 /**
- * Helper to set the token inside an HttpOnly cookie
- * (same logic reused in register + login).
+ * Sets the JWT as an HttpOnly cookie on the response.
+ * HttpOnly prevents JS from reading the token (XSS protection).
+ * secure + sameSite are tightened in production.
  */
 const setAuthCookie = (res, token) => {
   res.cookie('token', token, {
-    // httpOnly: true — cookie is NOT readable by JavaScript.
-    // This is the primary XSS defense: even if an attacker injects a script,
-    // they cannot steal the token via document.cookie or fetch().
     httpOnly: true,
-    // secure: true in production — cookie is only sent over HTTPS connections.
     secure: process.env.NODE_ENV === 'production',
-    // sameSite: prevents CSRF attacks by blocking cross-site cookie sending.
-    // 'strict' in production, 'lax' in development (allows local testing).
     sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
-    maxAge: 24 * 60 * 60 * 1000, // 24 hours in milliseconds
+    maxAge: 24 * 60 * 60 * 1000,
   });
 };
-
 
 module.exports = { createToken, setAuthCookie };

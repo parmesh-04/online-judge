@@ -84,7 +84,7 @@ jobs:
           for i in $(seq 1 15); do
             STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:5000/api/health || echo "000")
             if [ "$STATUS" = "200" ]; then
-              echo "✅ Health check passed on attempt $i"
+              echo "Health check passed on attempt $i"
               kill $SERVER_PID 2>/dev/null || true
               exit 0
             fi
@@ -92,7 +92,7 @@ jobs:
             sleep 2
           done
 
-          echo "❌ Health check failed after 15 attempts"
+          echo "Health check failed after 15 attempts"
           echo "--- Last server output ---"
           kill $SERVER_PID 2>/dev/null || true
           exit 1
@@ -127,4 +127,4 @@ jobs:
         run: |
           echo "--- Built images ---"
           docker images | grep online-judge
-          echo "✅ All 3 Docker images built successfully"
+          echo "All 3 Docker images built successfully"

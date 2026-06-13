@@ -1,37 +1,23 @@
-// ═══════════════════════════════════════════════════════════════════════
-// backend/models/user.js — User schema and model
-// ═══════════════════════════════════════════════════════════════════════
-//
-// Defines the User document structure in MongoDB.
-// Passwords are hashed in the controller (authController.js) before saving,
-// not in a pre-save hook, to keep the model layer simple and predictable.
-//
-// Indexes:
-//   { email: 1 }           → unique lookup during login (email is the username)
-//   { solvedProblems: 1 }  → efficient leaderboard queries that sort by solve count
-// ═══════════════════════════════════════════════════════════════════════
+// backend/models/user.js
+// User schema — passwords are hashed before saving in authController, not here.
 
 const mongoose = require('mongoose');
 
 const userSchema = new mongoose.Schema({
 
-  // ── User's first name (displayed on profile and leaderboard) ──
   firstname: {
     type: String,
     required: true,
-    trim: true,  // removes leading/trailing whitespace
+    trim: true,
   },
 
-  // ── User's last name ──
   lastname: {
     type: String,
     required: true,
     trim: true,
   },
 
-  // ── Email — acts as the unique username for login ──
-  // lowercase: true ensures "User@Gmail.com" and "user@gmail.com" are the same
-  // unique: true creates a unique index automatically (may cause duplicate index warning)
+  // Email is used as the unique login identifier
   email: {
     type: String,
     required: true,
@@ -40,42 +26,27 @@ const userSchema = new mongoose.Schema({
     trim: true,
   },
 
-  // ── Password — always stored as a bcrypt hash, NEVER plaintext ──
-  // Hashing is done in authController.js using bcrypt.hash(password, 10)
-  // The "10" is the salt rounds (2^10 = 1024 iterations).
-  // Higher rounds = more secure but slower. 10 is the industry standard
-  // balancing security (~100ms to hash) vs. performance.
+  // Always stored as a bcrypt hash, never plaintext
   password: {
     type: String,
     required: true,
   },
 
-  // ── Role — either 'user' or 'admin' ──
-  // admin: can create/delete problems
-  // user: can solve problems and view leaderboard
-  // Default is 'user' — admin must be set manually or via seed script
   role: {
     type: String,
     enum: ['user', 'admin'],
     default: 'user',
   },
 
-  // ── Solved problems — array of ObjectId references to Problem documents ──
-  // This is updated when a user's submission gets "Accepted" verdict.
-  // Used by the leaderboard to rank users by number of problems solved.
-  // Array (not Set) because Mongoose doesn't support Set types natively.
+  // Updated when a submission gets Accepted verdict, used by the leaderboard
   solvedProblems: {
     type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Problem' }],
     default: [],
   },
 
-}, { timestamps: true }); // Adds createdAt and updatedAt fields automatically
+}, { timestamps: true });
 
-// ── Indexes ──
-// { solvedProblems: 1 }: Speeds up leaderboard queries that
-//   sort or filter by number of solved problems.
-// Note: The email index is already created automatically by unique:true above.
+// Index for leaderboard queries — email index is created automatically by unique:true
 userSchema.index({ solvedProblems: 1 });
-
 
 module.exports = mongoose.model('User', userSchema);

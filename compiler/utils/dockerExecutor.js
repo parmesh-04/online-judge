@@ -1,54 +1,17 @@
-// ═══════════════════════════════════════════════════════════════════════
-// compiler/utils/dockerExecutor.js — Docker-based code execution engine
-// ═══════════════════════════════════════════════════════════════════════
+// compiler/utils/dockerExecutor.js
+// Runs untrusted user code inside isolated Docker containers.
 //
-// This module replaces the old child_process approach with isolated Docker
-// containers for SECURE execution of untrusted user code.
+// Each execution gets a fresh container with these security constraints:
+//   - NetworkMode: none — no outbound internet access
+//   - Memory: 256MB cap — prevents memory bombs
+//   - PidsLimit: 50 — prevents fork bombs (disabled on Windows Docker Desktop)
+//   - ReadonlyRootfs: true — no writing to container filesystem (disabled on Windows)
+//   - CapDrop: ALL — drops all Linux capabilities
+//   - SecurityOpt: no-new-privileges — prevents privilege escalation
 //
-// SECURITY MODEL:
-// Each submission gets a FRESH container with these constraints:
-//
-//   NetworkMode: 'none'
-//     → Prevents code from making HTTP requests, exfiltrating data,
-//       or attacking other services on the network
-//
-//   Memory: 256MB, MemorySwap: 256MB
-//     → Prevents memory bombs — malicious code allocating infinite RAM
-//     → memswap must equal mem_limit to prevent swap exploitation
-//
-//   PidsLimit: 50
-//     → Prevents fork bombs — malicious code calling fork() in a loop
-//       to spawn unlimited child processes and crash the host
-//     → NOTE: Not supported on Windows Docker Desktop (WSL2). Set to 0 (disabled).
-//
-//   ReadonlyRootfs: true
-//     → Prevents code from writing to the container filesystem
-//       (e.g., creating shell scripts, modifying system files)
-//     → /tmp is mounted as a separate tmpfs with exec permission for compiled binaries
-//     → NOTE: Not supported on Windows Docker Desktop. Conditionally disabled.
-//
-//   CapDrop: ['ALL']
-//     → Drops ALL Linux capabilities (e.g., no CAP_SYS_ADMIN, no CAP_NET_RAW)
-//     → The container can't do anything privileged
-//
-//   SecurityOpt: ['no-new-privileges']
-//     → Prevents escalation via setuid/setgid binaries inside the container
-//
-// IMAGES:
-//   C/C++:      judge-cpp:latest (custom alpine image, ~215MB)
-//   Python:     python:3.11-slim (~130MB)
-//   JavaScript: node:20-slim (~185MB)
-//   Java:       openjdk:21-slim (~300MB)
-//
-// CONTAINER LIFECYCLE:
-//   1. Create container → 2. Start → 3. Wait (with timeout) →
-//   4. Read logs → 5. Manual remove → 6. Cleanup temp files
-//
-//   NOTE: AutoRemove is set to FALSE. We used to set it to true, but this
-//   caused a race condition where Docker deleted the container before
-//   container.logs() could read the output, resulting in a 409 error.
-//   Now we manually call container.remove({ force: true }) after capturing logs.
-// ═══════════════════════════════════════════════════════════════════════
+// Container lifecycle: create -> start -> wait (with timeout) -> read logs -> remove -> cleanup files
+// AutoRemove is false because it caused a race condition where Docker deleted the
+// container before logs could be read, resulting in a 409 error.
 
 const Docker = require('dockerode');
 const fs = require('fs/promises');
@@ -390,11 +353,11 @@ function parseLogs(buffer) {
 const verifyDocker = async () => {
   try {
     await docker.ping();
-    console.log('✅ Docker connection verified');
+    console.log('Docker connection verified');
   } catch (error) {
-    console.error('❌ Docker is not available. The compiler service requires Docker to run.');
-    console.error('   Make sure Docker is installed and the Docker socket is accessible.');
-    console.error('   Error:', error.message);
+    console.error('Docker is not available. The compiler service requires Docker to run.');
+    console.error('Make sure Docker is installed and the Docker socket is accessible.');
+    console.error('Error:', error.message);
     process.exit(1);
   }
 };

@@ -41,3 +41,8 @@ test_sse.js
 test_sse_http.js
 backend/test_gemini.js
 project_documentation.md
+
+# Internal-only docs (kept locally, not on GitHub)
+DEPLOYMENT.md
+CHECKLIST.md
+test_judge.js

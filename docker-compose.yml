@@ -31,6 +31,10 @@ services:
     build: ./compiler
     ports:
       - "8000:8000"
+    # Must run as root to access the Docker socket for sandboxed code execution.
+    # Security is enforced at the nested container level (NetworkMode:none,
+    # ReadonlyRootfs, CapDrop:ALL), not at the compiler process level.
+    user: root
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - /tmp:/tmp

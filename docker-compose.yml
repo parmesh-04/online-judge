@@ -3,7 +3,13 @@
 
 services:
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      args:
+        # These are baked into the JS bundle at build time by Vite.
+        # Update to your domain/IP before running docker compose up --build
+        - VITE_API_BASE_URL=http://13.232.215.222
+        - VITE_COMPILER_URL=http://13.232.215.222
     ports:
       - "3000:80"
     depends_on:

@@ -27,7 +27,8 @@
 // AI streaming uses the Fetch API with ReadableStream to parse SSE chunks.
 
 import { useEffect, useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import Editor from '@monaco-editor/react';
 import { getProblem } from '../api/problems';
 import { runCode, submitCode } from '../api/compiler';
@@ -48,6 +49,8 @@ const LANGUAGES = [
 
 const ProblemDetail = () => {
   const { id } = useParams();
+  const { auth } = useAuth();
+  const navigate = useNavigate();
   const [problem, setProblem] = useState(null);
   const [language, setLanguage] = useState('cpp');
   const [code, setCode] = useState('');
@@ -99,25 +102,31 @@ const ProblemDetail = () => {
   }, [id]);
 
   const onRun = async () => {
-    if (!input.trim()) {
-      setError('Please provide input before running code');
-      return;
-    }
+    // Auto-expand the custom input section so user can see/edit it
+    if (!showInput) setShowInput(true);
     setLoading(true);
     setOutput('');
     setError('');
     setVerdict(null);
     try {
       const res = await runCode(code, input, language);
-      setOutput(res.data.output || '');
+      setOutput(res.data.output || '(no output)');
     } catch (e) {
-      setError(e?.response?.data?.error || 'Run failed');
+      if (e?.response?.status === 401) {
+        setError('⚠️ You need to be logged in to run code on the judge. Please sign in first.');
+      } else {
+        setError(e?.response?.data?.error || 'Run failed — check your code for errors.');
+      }
     } finally {
       setLoading(false);
     }
   };
 
   const onSubmit = async () => {
+    if (!auth.isLoggedIn) {
+      setError('🔒 You need to be logged in to submit solutions. Your solve history and leaderboard rank are saved to your account.');
+      return;
+    }
     setLoading(true);
     setOutput('');
     setError('');
@@ -127,7 +136,6 @@ const ProblemDetail = () => {
       const res = await submitCode(code, language, id);
       const v = res.data.verdict || res.data.output || '';
       setOutput(v);
-      // Parse verdict type
       if (typeof v === 'string') {
         if (v.includes('Accepted')) setVerdict({ type: 'accepted', text: v });
         else if (v.includes('Wrong Answer')) setVerdict({ type: 'wrong', text: v, data: res.data.failedTestCase });
@@ -137,13 +145,23 @@ const ProblemDetail = () => {
         else setVerdict({ type: 'other', text: v });
       }
     } catch (e) {
-      setError(e?.response?.data?.error || 'Submit failed');
+      if (e?.response?.status === 401) {
+        setError('🔒 Session expired. Please log in again to submit your solution.');
+      } else {
+        setError(e?.response?.data?.error || 'Submission failed — please try again.');
+      }
     } finally {
       setLoading(false);
     }
   };
 
   const onDebug = async () => {
+    if (!auth.isLoggedIn) {
+      setDebugPanelOpen(true);
+      setDebugLoading(false);
+      setStreamText('🔒 AI Debug requires a free account. Sign in or register to get AI-powered debugging with Gemini 2.5 Flash — it explains exactly what went wrong and how to fix it.');
+      return;
+    }
     setDebugPanelOpen(true);
     setDebugLoading(true);
     setDebugData(null);
@@ -151,10 +169,19 @@ const ProblemDetail = () => {
     setComplexity(null);
 
     try {
-      // Start streaming debug
       const response = await debugCodeAPI(
         code, language, output || error, problem?.description || '', input
       );
+
+      if (!response.ok) {
+        const errText = await response.text();
+        const isAuthError = response.status === 401;
+        setStreamText(isAuthError
+          ? '🔒 Session expired. Please log in again to use AI Debug.'
+          : '⚠️ AI debug service returned an error. Please try again.');
+        setDebugLoading(false);
+        return;
+      }
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
@@ -176,34 +203,43 @@ const ProblemDetail = () => {
             if (data.done && data.parsed) {
               setDebugData(data.parsed);
             }
-          } catch (e) {
+          } catch (_) {
             // Skip malformed lines
           }
         }
       }
 
-      // Also get complexity
+      // Get complexity analysis (non-critical)
       try {
         const compRes = await getComplexity(code, language);
         setComplexity(compRes.data);
-      } catch (e) {
-        // Non-critical
-      }
+      } catch (_) {}
     } catch (e) {
-      setStreamText('AI debug service is currently unavailable. Please try again later.');
+      setStreamText('⚠️ AI debug service is temporarily unavailable. Check your connection and try again.');
     } finally {
       setDebugLoading(false);
     }
   };
 
   const onHint = async () => {
+    if (!auth.isLoggedIn) {
+      setHintData({
+        hint: '🔒 AI hints require a free account. Sign in or register to get personalized hints powered by Gemini AI.',
+        hintLevel: 'info',
+      });
+      return;
+    }
     setHintLoading(true);
     setHintData(null);
     try {
       const res = await getHint(problem?.description || '', code, language, attemptCount || 1);
       setHintData(res.data);
     } catch (e) {
-      setError('Failed to get hint');
+      if (e?.response?.status === 401) {
+        setHintData({ hint: '🔒 Session expired. Please log in again to use AI hints.', hintLevel: 'info' });
+      } else {
+        setHintData({ hint: '⚠️ AI hint service is temporarily unavailable. Try again in a moment.', hintLevel: 'info' });
+      }
     } finally {
       setHintLoading(false);
     }
@@ -418,6 +454,23 @@ const ProblemDetail = () => {
           )}
         </div>
 
+        {/* Auth banner for guests */}
+        {!auth.isLoggedIn && (
+          <div className="px-4 py-2 border-t border-[var(--border)] bg-yellow-500/5 flex items-center justify-between gap-2">
+            <span className="text-xs text-yellow-400">
+              🔒 Sign in to submit solutions, track your rank, and use AI features
+            </span>
+            <div className="flex gap-2">
+              <Link to="/login" className="text-xs btn btn-outline py-1 px-2 border-yellow-500/40 text-yellow-400 hover:bg-yellow-500/10">
+                Sign in
+              </Link>
+              <Link to="/register" className="text-xs btn btn-primary py-1 px-2">
+                Register
+              </Link>
+            </div>
+          </div>
+        )}
+
         {/* Action Buttons */}
         <div className="flex items-center justify-between px-4 py-3 border-t border-[var(--border)] bg-[var(--bg-surface)]">
           <button
@@ -431,10 +484,13 @@ const ProblemDetail = () => {
           <button
             disabled={loading}
             onClick={onSubmit}
-            className="btn btn-primary text-sm px-6"
+            className={`btn text-sm px-6 ${
+              auth.isLoggedIn ? 'btn-primary' : 'btn-outline border-[var(--accent)] text-[var(--accent)]'
+            }`}
+            title={!auth.isLoggedIn ? 'Sign in to submit' : ''}
           >
             {loading ? <span className="spinner"></span> : <Send size={14} />}
-            Submit
+            {auth.isLoggedIn ? 'Submit' : 'Submit (login required)'}
           </button>
         </div>
 
@@ -442,7 +498,15 @@ const ProblemDetail = () => {
         {(output || error || verdict) && (
           <div className="border-t border-[var(--border)] max-h-48 overflow-y-auto">
             {error && (
-              <div className="px-4 py-3 text-sm text-red-400 bg-red-900/10">{error}</div>
+              <div className="px-4 py-3 text-sm bg-red-900/10 border-l-4 border-red-500/50">
+                <span className="text-red-400">{error}</span>
+                {(error.includes('log in') || error.includes('Sign in') || error.includes('Session expired')) && (
+                  <div className="mt-2 flex gap-2">
+                    <Link to="/login" className="text-xs btn btn-outline py-0.5 px-2 border-red-500/40 text-red-400">Sign in</Link>
+                    <Link to="/register" className="text-xs btn btn-primary py-0.5 px-2">Create account</Link>
+                  </div>
+                )}
+              </div>
             )}
 
             {verdict && (

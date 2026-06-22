@@ -1,24 +1,43 @@
-// Purpose: Registration page with styled dark card design.
-// Logic is identical to the original — only JSX/CSS changed.
-
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { register, getUserStats } from '../api/auth';
 import { useAuth } from '../context/AuthContext';
-import { UserPlus } from 'lucide-react';
+import { UserPlus, Eye, EyeOff, CheckCircle2, XCircle } from 'lucide-react';
 
 const Register = () => {
   const [firstname, setFirstname] = useState('');
   const [lastname, setLastname] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { setAuth } = useAuth();
 
+  // Real-time password requirement checks
+  const checks = {
+    length: password.length >= 6,
+    uppercase: /[A-Z]/.test(password),
+    number: /[0-9]/.test(password),
+  };
+  const passwordValid = checks.length && checks.uppercase && checks.number;
+
+  const friendlyError = (msg) => {
+    if (!msg) return 'Registration failed. Please try again.';
+    if (msg.includes('already exists')) return 'An account with this email already exists. Try logging in instead.';
+    if (msg.includes('password')) return 'Password too weak — must be at least 6 characters with one uppercase letter and one number.';
+    if (msg.includes('email')) return 'Please enter a valid email address.';
+    if (msg.includes('required')) return 'Please fill in all fields.';
+    return msg;
+  };
+
   const onSubmit = async (e) => {
     e.preventDefault();
+    if (!passwordValid) {
+      setError('Please fix your password before submitting — it must have 6+ chars, one uppercase letter, and one number.');
+      return;
+    }
     setError('');
     setLoading(true);
 
@@ -33,11 +52,18 @@ const Register = () => {
       });
       navigate('/problems');
     } catch (err) {
-      setError(err?.response?.data?.message || 'Registration failed');
+      setError(friendlyError(err?.response?.data?.message));
     } finally {
       setLoading(false);
     }
   };
+
+  const Req = ({ ok, label }) => (
+    <div className={`flex items-center gap-1.5 text-xs ${ok ? 'text-green-400' : 'text-[var(--text-muted)]'}`}>
+      {ok ? <CheckCircle2 size={12} /> : <XCircle size={12} />}
+      {label}
+    </div>
+  );
 
   return (
     <div className="min-h-[calc(100vh-60px)] flex items-center justify-center px-4 py-8">
@@ -47,7 +73,7 @@ const Register = () => {
             <UserPlus size={24} className="text-[var(--accent)]" />
           </div>
           <h2 className="text-2xl font-bold text-[var(--text-primary)]">Create account</h2>
-          <p className="mt-1 text-sm text-[var(--text-secondary)]">Join CodeArena and start solving</p>
+          <p className="mt-1 text-sm text-[var(--text-secondary)]">Join CodeArena — it's free. Start solving in seconds.</p>
         </div>
 
         <form onSubmit={onSubmit} className="space-y-4">
@@ -73,6 +99,7 @@ const Register = () => {
               />
             </div>
           </div>
+
           <div>
             <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1.5">Email</label>
             <input
@@ -84,16 +111,35 @@ const Register = () => {
               required
             />
           </div>
+
           <div>
             <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1.5">Password</label>
-            <input
-              className="input-field"
-              placeholder="6+ chars, uppercase + number"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
+            <div className="relative">
+              <input
+                className="input-field pr-10"
+                placeholder="Create a strong password"
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                tabIndex={-1}
+              >
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+            {/* Password requirements checklist */}
+            {password.length > 0 && (
+              <div className="mt-2 flex gap-4 flex-wrap">
+                <Req ok={checks.length} label="6+ characters" />
+                <Req ok={checks.uppercase} label="Uppercase letter" />
+                <Req ok={checks.number} label="One number" />
+              </div>
+            )}
           </div>
 
           {error && (

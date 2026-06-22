@@ -65,6 +65,22 @@ const Problems = () => {
       <h1 className="text-3xl font-bold text-[var(--text-primary)]">Problems</h1>
       <p className="mt-1 text-[var(--text-secondary)]">Practice makes perfect. Pick a challenge.</p>
 
+      {/* Guest prompt — shown only when not logged in */}
+      {!auth.isLoggedIn && (
+        <div className="mt-4 p-4 rounded-lg border border-[var(--accent)]/30 bg-[var(--accent-light)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-semibold text-[var(--text-primary)]">🏆 Track your progress &amp; compete on the leaderboard</p>
+            <p className="text-xs text-[var(--text-secondary)] mt-0.5">
+              Create a free account to submit solutions, earn points, use AI hints, and see where you rank.
+            </p>
+          </div>
+          <div className="flex gap-2 shrink-0">
+            <Link to="/login" className="btn btn-outline text-sm py-1.5">Sign in</Link>
+            <Link to="/register" className="btn btn-primary text-sm py-1.5">Register free →</Link>
+          </div>
+        </div>
+      )}
+
       {/* Search & Filters */}
       <div className="mt-6 flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">

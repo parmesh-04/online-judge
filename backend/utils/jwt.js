@@ -21,13 +21,17 @@ const createToken = (user) => {
 /**
  * Sets the JWT as an HttpOnly cookie on the response.
  * HttpOnly prevents JS from reading the token (XSS protection).
- * secure + sameSite are tightened in production.
+ *
+ * IMPORTANT: secure:true requires HTTPS. Set COOKIE_SECURE=true in .env
+ * ONLY after configuring SSL/TLS (Stage 8 — certbot). Until then, leave
+ * it unset (defaults to false) so cookies work over plain HTTP on EC2.
  */
 const setAuthCookie = (res, token) => {
+  const isHttps = process.env.COOKIE_SECURE === 'true';
   res.cookie('token', token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+    secure: isHttps,
+    sameSite: isHttps ? 'strict' : 'lax',
     maxAge: 24 * 60 * 60 * 1000,
   });
 };

@@ -13,7 +13,7 @@ import { debugCode as debugCodeAPI, getHint, getComplexity } from '../api/ai';
 import AIDebugPanel from '../components/AIDebugPanel';
 import {
   Play, Send, RotateCcw, Sparkles, Lightbulb, ChevronDown, ChevronUp,
-  CheckCircle2, XCircle, AlertTriangle, Clock, Terminal, Copy, Check, Tag
+  CheckCircle2, XCircle, AlertTriangle, Clock, Terminal, Copy, Check, Tag, X
 } from 'lucide-react';
 
 const LANGUAGES = [
@@ -443,14 +443,19 @@ const ProblemDetail = () => {
               </div>
             )}
 
-            {/* Hint display */}
+            {/* Floating Hint display */}
             {hintData && (
-              <div className="mx-6 mb-5 p-4 rounded-lg border border-blue-500/20 bg-blue-500/5 animate-fade-in">
-                <div className="flex items-center gap-2 mb-2">
-                  <Lightbulb size={16} className="text-blue-400" />
-                  <span className="text-sm font-semibold text-blue-400 capitalize">{hintData.hintLevel} Hint</span>
+              <div className="absolute bottom-6 left-6 right-6 p-4 rounded-lg border border-blue-500/40 bg-[#1e293b]/95 backdrop-blur-sm shadow-2xl animate-fade-in z-10" style={{ maxWidth: 'calc(50% - 3rem)' }}>
+                <div className="flex items-center justify-between mb-2 border-b border-blue-500/20 pb-2">
+                  <div className="flex items-center gap-2">
+                    <Lightbulb size={16} className="text-blue-400" />
+                    <span className="text-sm font-semibold text-blue-400 capitalize">{hintData.hintLevel} Hint</span>
+                  </div>
+                  <button onClick={() => setHintData(null)} className="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors p-1">
+                    <X size={14} />
+                  </button>
                 </div>
-                <p className="text-sm text-[var(--text-secondary)] leading-relaxed">{hintData.hint}</p>
+                <p className="text-sm text-[var(--text-secondary)] leading-relaxed max-h-40 overflow-y-auto pr-2">{hintData.hint}</p>
               </div>
             )}
           </div>

@@ -41,6 +41,8 @@ services:
     # Security is enforced at the nested container level (NetworkMode:none,
     # ReadonlyRootfs, CapDrop:ALL), not at the compiler process level.
     user: root
+    env_file:
+      - ./compiler/.env
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - /tmp:/tmp

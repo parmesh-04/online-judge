@@ -107,13 +107,27 @@ a {
   50% { box-shadow: 0 0 40px rgba(37, 99, 235, 0.25); }
 }
 
-@keyframes typewriter {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
 @keyframes spin {
   to { transform: rotate(360deg); }
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+@keyframes verdictGlow {
+  0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4); }
+  50% { box-shadow: 0 0 20px 4px rgba(34, 197, 94, 0.15); }
+  100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-4px); }
+  40% { transform: translateX(4px); }
+  60% { transform: translateX(-3px); }
+  80% { transform: translateX(3px); }
 }
 
 /* ============================================
@@ -129,6 +143,14 @@ a {
 
 .animate-slide-right {
   animation: slideInRight 0.3s ease-out forwards;
+}
+
+.animate-verdict-glow {
+  animation: verdictGlow 1.5s ease-out;
+}
+
+.animate-shake {
+  animation: shake 0.4s ease-out;
 }
 
 .gradient-text {
@@ -194,12 +216,17 @@ a {
   cursor: not-allowed;
 }
 
+.btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
 .btn-primary {
   background: var(--accent);
   color: white;
 }
 .btn-primary:hover:not(:disabled) {
   background: var(--accent-hover);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
 }
 
 .btn-outline {
@@ -213,12 +240,13 @@ a {
 }
 
 .btn-success {
-  background: transparent;
-  border: 1px solid var(--success);
-  color: var(--success);
+  background: var(--success);
+  color: white;
+  border: none;
 }
 .btn-success:hover:not(:disabled) {
-  background: rgba(22, 163, 74, 0.1);
+  background: #15803d;
+  box-shadow: 0 4px 12px rgba(22, 163, 74, 0.3);
 }
 
 .btn-purple {
@@ -227,6 +255,7 @@ a {
 }
 .btn-purple:hover:not(:disabled) {
   background: #8b5cf6;
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
 }
 
 .input-field {
@@ -238,7 +267,7 @@ a {
   color: var(--text-primary);
   font-size: 14px;
   font-family: var(--font-sans);
-  transition: border-color 0.2s;
+  transition: border-color 0.2s, box-shadow 0.2s;
   outline: none;
 }
 
@@ -279,4 +308,172 @@ a {
   background-size: 200% 100%;
   animation: gradientShift 1.5s ease infinite;
   border-radius: var(--radius-sm);
+}
+
+/* ============================================
+   Homepage — Terminal Code Block
+   ============================================ */
+.hero-grid-bg {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(37, 99, 235, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(37, 99, 235, 0.03) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 50%, black 30%, transparent 100%);
+  -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 50%, black 30%, transparent 100%);
+  pointer-events: none;
+}
+
+.terminal-window {
+  background: #0d1117;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(255, 255, 255, 0.03);
+}
+
+.terminal-titlebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-surface);
+}
+
+.terminal-body {
+  padding: 14px 0;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.7;
+  min-height: 260px;
+}
+
+.terminal-line {
+  display: flex;
+  gap: 16px;
+  padding: 0 16px;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.terminal-line.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.terminal-line-num {
+  color: var(--text-muted);
+  user-select: none;
+  width: 20px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.code-preprocessor { color: #ff7b72; }
+.code-keyword { color: #ff7b72; }
+.code-function { color: #d2a8ff; }
+.code-default { color: #c9d1d9; }
+
+.terminal-cursor {
+  display: inline-block;
+  width: 8px;
+  height: 16px;
+  background: var(--accent);
+  margin-left: 52px;
+  animation: blink 1s step-end infinite;
+}
+
+.terminal-verdict {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  border-top: 1px solid var(--border);
+  background: rgba(22, 163, 74, 0.05);
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.5s ease 0.3s, transform 0.5s ease 0.3s;
+}
+
+.terminal-verdict.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ============================================
+   Problem Detail — Verdict Cards
+   ============================================ */
+.verdict-accepted {
+  border-left: 4px solid #22c55e;
+  background: rgba(22, 163, 74, 0.06);
+  animation: verdictGlow 1.5s ease-out;
+}
+
+.verdict-wrong {
+  border-left: 4px solid #ef4444;
+  background: rgba(239, 68, 68, 0.06);
+  animation: shake 0.4s ease-out;
+}
+
+.verdict-tle {
+  border-left: 4px solid #eab308;
+  background: rgba(234, 179, 8, 0.06);
+}
+
+.verdict-compile {
+  border-left: 4px solid #f97316;
+  background: rgba(249, 115, 22, 0.06);
+}
+
+.verdict-runtime {
+  border-left: 4px solid #ef4444;
+  background: rgba(239, 68, 68, 0.06);
+}
+
+/* ============================================
+   Problem Detail — Tab Styles
+   ============================================ */
+.problem-tab {
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  color: var(--text-secondary);
+  transition: color 0.2s, border-color 0.2s;
+  background: none;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+}
+
+.problem-tab:hover {
+  color: var(--text-primary);
+}
+
+.problem-tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+/* ============================================
+   Keyboard Shortcut Badge
+   ============================================ */
+.kbd {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-family: var(--font-mono);
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  line-height: 1.4;
 }

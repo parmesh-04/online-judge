@@ -165,6 +165,8 @@ exports.submitCode = async (req, res) => {
   // ── Step 2-3: Run against each hidden test case ──
   // Sequential execution — stops at the first failure.
   // This is intentional: we don't want to execute all test cases if the first one fails.
+  const totalTestCases = (problem.hiddenTestCases || []).length;
+
   for (const [index, testCase] of (problem.hiddenTestCases || []).entries()) {
     try {
       const result = await executeInDocker(normalizedLang, code, testCase.input, EXECUTION_TIMEOUT);
@@ -173,7 +175,7 @@ exports.submitCode = async (req, res) => {
       if (result.stderr && result.exitCode !== 0) {
         const verdict = `❌ Runtime Error:\n${result.stderr}`;
         await reportVerdict(cookie, problemId, verdict, code, normalizedLang);
-        return res.json({ verdict });
+        return res.json({ verdict, testCaseNumber: index + 1, totalTestCases });
       }
 
       // Wrong Answer — output doesn't match expected
@@ -183,6 +185,7 @@ exports.submitCode = async (req, res) => {
         return res.json({
           verdict: '❌ Wrong Answer',
           testCaseNumber: index + 1,
+          totalTestCases,
           failedTestCase: {
             input: testCase.input,
             expectedOutput: testCase.output,
@@ -201,11 +204,12 @@ exports.submitCode = async (req, res) => {
       }:\n${error.message}`;
 
       await reportVerdict(cookie, problemId, verdict, code, normalizedLang);
-      return res.json({ verdict });
+      return res.json({ verdict, testCaseNumber: index + 1, totalTestCases });
     }
   }
 
   // ── Step 4: All test cases passed! ──
   await reportVerdict(cookie, problemId, 'Accepted', code, normalizedLang);
-  return res.json({ verdict: '✅ Accepted' });
+  return res.json({ verdict: '✅ Accepted', totalTestCases });
 };
+

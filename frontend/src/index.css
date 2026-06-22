@@ -477,3 +477,191 @@ a {
   color: var(--text-muted);
   line-height: 1.4;
 }
+
+/* ============================================
+   Problem Description — Prose Typography
+   ============================================ */
+.problem-description {
+  line-height: 1.75;
+  color: var(--text-secondary);
+}
+
+.problem-text {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.75;
+  margin-bottom: 14px;
+}
+
+.problem-section-heading {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 10px;
+  margin-top: 20px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+.problem-section-heading:first-child {
+  margin-top: 0;
+}
+
+.problem-list {
+  margin: 0 0 14px 0;
+  padding-left: 0;
+  list-style: none;
+}
+
+.problem-list li {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.7;
+  padding-left: 20px;
+  position: relative;
+  margin-bottom: 4px;
+}
+
+.problem-list li::before {
+  content: '·';
+  position: absolute;
+  left: 6px;
+  color: var(--accent);
+  font-weight: bold;
+  font-size: 16px;
+  top: -1px;
+}
+
+.problem-inline-code {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: rgba(110, 118, 129, 0.15);
+  color: #e6edf3;
+  border: 1px solid var(--border);
+}
+
+/* ============================================
+   Example I/O Box — LeetCode style
+   ============================================ */
+.example-box {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--bg-primary);
+}
+
+.example-row {
+  padding: 12px 14px;
+}
+
+.example-row + .example-row {
+  border-top: 1px solid var(--border);
+}
+
+.example-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.example-copy-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 3px;
+  transition: color 0.15s, background 0.15s;
+}
+
+.example-copy-btn:hover {
+  color: var(--text-primary);
+  background: var(--bg-surface);
+}
+
+.example-content {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text-primary);
+  line-height: 1.6;
+  margin: 0;
+  white-space: pre;
+  overflow-x: auto;
+}
+
+/* ============================================
+   Tag Pills
+   ============================================ */
+.tag-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  background: rgba(110, 118, 129, 0.1);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  transition: color 0.15s, background 0.15s;
+}
+
+.tag-pill:hover {
+  background: var(--accent-light);
+  color: var(--accent-hover);
+  border-color: var(--accent-light);
+}
+
+/* ============================================
+   Icon Button (compact toolbar buttons)
+   ============================================ */
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-secondary);
+  transition: all 0.15s;
+  font-family: var(--font-sans);
+}
+
+.icon-btn:hover:not(:disabled) {
+  background: var(--bg-surface-hover);
+  color: var(--text-primary);
+  border-color: var(--border-light);
+}
+
+.icon-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ============================================
+   Submission Result — accepted confetti border
+   ============================================ */
+@keyframes borderPulse {
+  0%, 100% { border-left-color: #22c55e; }
+  50% { border-left-color: #4ade80; }
+}
+
+.verdict-accepted {
+  animation: verdictGlow 1.5s ease-out, borderPulse 2s ease-in-out 0.5s 3;
+}
+
